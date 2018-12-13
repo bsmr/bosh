@@ -88,6 +88,7 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
 
     allow(release1).to receive(:get_or_create_template).with('foo').and_return(release1_foo_job)
     allow(release1).to receive(:get_or_create_template).with('bar').and_return(release1_bar_job)
+    allow(release1).to receive(:model).and_return(release1_model)
 
     allow(release1_foo_job).to receive(:properties)
     allow(release1_bar_job).to receive(:properties)
@@ -328,6 +329,7 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
         allow(plan).to receive(:release).with('release2').and_return(release2)
 
         allow(release2).to receive(:get_or_create_template).with('bar').and_return(release2_bar_job)
+        allow(release2).to receive(:model).and_return(release2_model)
       end
 
       let(:spec) do

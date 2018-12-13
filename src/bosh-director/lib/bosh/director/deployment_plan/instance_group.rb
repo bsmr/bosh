@@ -297,7 +297,7 @@ module Bosh::Director
 
         jobs.each do |job|
           job.model.package_names.each do |package_name|
-            package = job.model.release.packages.find { |p| p.name == package_name }
+            package = job.release.model.packages.find { |p| p.name == package_name }
 
             releases_by_package_names[package_name] ||= {
               usages: [],
