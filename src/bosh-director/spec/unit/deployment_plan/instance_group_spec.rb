@@ -61,6 +61,10 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
     Bosh::Director::Models::Package.make(name: 'same-name', release: release1_model, fingerprint: 'abc123')
   end
 
+  let(:release1_package1_model2) do
+    Bosh::Director::Models::Package.make(name: 'same-name', release: release1_model, fingerprint: 'c68y74')
+  end
+
   let(:release1) do
     Bosh::Director::DeploymentPlan::ReleaseVersion.new(
       deployment,
@@ -71,6 +75,7 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
 
   let(:release1_model) { Bosh::Director::Models::Release.make(name: 'release1') }
   let(:release1_version_model) { Bosh::Director::Models::ReleaseVersion.make(version: '1', release: release1_model) }
+  let(:release1_version2_model) { Bosh::Director::Models::ReleaseVersion.make(version: '2', release: release1_model) }
   let(:update_config) { double(Bosh::Director::DeploymentPlan::UpdateConfig) }
   let(:links_serial_id) { 7 }
   subject { described_class.new(logger) }
@@ -98,8 +103,10 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
     allow(deployment).to receive(:current_variable_set).and_return(Bosh::Director::Models::VariableSet.make)
 
     release1_version_model.add_template(release1_foo_job_model)
+    release1_version2_model.add_template(release1_foo_job_model)
     release1_version_model.add_template(release1_bar_job_model)
     release1_version_model.add_package(release1_package1_model)
+    release1_version2_model.add_package(release1_package1_model2)
     subject.update = update_config
   end
 
@@ -304,6 +311,7 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
       let(:release2_bar_job_model) { Bosh::Director::Models::Template.make(name: 'bar', release: release2_model) }
       let(:release2_model) { Bosh::Director::Models::Release.make(name: 'release2') }
       let(:release2_version_model) { Bosh::Director::Models::ReleaseVersion.make(release: release2_model, version: 1) }
+      let(:release2_version2_model) { Bosh::Director::Models::ReleaseVersion.make(release: release2_model, version: 2) }
       let(:release2_package1_model) do
         Bosh::Director::Models::Package.make(
           name: release2_package1_name,
@@ -312,17 +320,28 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
           dependency_set_json: JSON.dump(release2_package1_dependencies),
         )
       end
+      let(:release2_package1_model2) do
+        Bosh::Director::Models::Package.make(
+          name: release2_package1_name,
+          release: release2_model,
+          fingerprint: release2_package1_fingerprint2,
+          dependency_set_json: JSON.dump(release2_package1_dependencies),
+        )
+      end
       let(:release2_package1_fingerprint) { '987asd' }
+      let(:release2_package1_fingerprint2) { 'c68y74' }
       let(:release2_package1_name) { 'another-name' }
       let(:release2_package1_dependencies) { [] }
 
       before do
         release2_version_model.add_template(release2_bar_job_model)
+        release2_version2_model.add_template(release2_bar_job_model)
         release2_version_model.add_package(release2_package1_model)
+        release2_version2_model.add_package(release2_package1_model2)
 
-        release1_foo_job_model.package_names = [release1_package1_model.name]
+        release1_foo_job_model.package_names = [release1_package1_model.name, release1_package1_model2.name]
         release1_foo_job_model.save
-        release2_bar_job_model.package_names = [release2_package1_model.name]
+        release2_bar_job_model.package_names = [release2_package1_model.name, release2_package1_model2.name]
         release2_bar_job_model.save
 
         allow(plan).to receive(:releases).with(no_args).and_return([release1, release2])
@@ -382,7 +401,14 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
 
           context 'when dependencies are the same' do
             it 'does not raise an exception' do
-              instance_group.validate_package_names_do_not_collide!
+              expect { instance_group.validate_package_names_do_not_collide! }.to_not raise_error
+            end
+
+            it 'validates our setup' do
+              expect(release1_foo_job.model.release.packages).to include(release1_package1_model, release1_package1_model2)
+              expect(release2_bar_job.model.release.packages).to include(release2_package1_model, release2_package1_model2)
+              expect(release1_foo_job.release.model.packages).to include(release1_package1_model, release1_package1_model2)
+              expect(release2_bar_job.release.model.packages).to include(release2_package1_model, release2_package1_model2)
             end
           end
 
